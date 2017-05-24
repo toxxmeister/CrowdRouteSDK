@@ -1,5 +1,8 @@
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
+apply plugin: 'com.github.dcendents.android-maven'
+
+group = 'com.github.toxxmeister'
 
 android {
     compileSdkVersion 25
@@ -38,12 +41,10 @@ dependencies {
     compile 'com.squareup.moshi:moshi:1.5.0'
     compile 'com.squareup.moshi:moshi-kotlin:1.5.0'
     compile 'com.squareup.okhttp3:okhttp:3.8.0'
-    compile 'de.troido.bleacon:bleacon-debug:2.0@aar'
+    compile 'com.github.toxxmeister:BLEacon:2.1.1'
 }
 
 repositories {
     mavenCentral()
-    flatDir {
-        dirs 'libs'
-    }
+    maven { url 'https://jitpack.io' }
 }
