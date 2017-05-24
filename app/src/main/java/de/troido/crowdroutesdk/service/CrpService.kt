@@ -12,6 +12,7 @@ import de.troido.bleacon.util.Uuid16
 import de.troido.crowdroutesdk.delivery.BackendDelivery
 import de.troido.crowdroutesdk.delivery.responseAdData
 import de.troido.crowdroutesdk.util.dLog
+import io.reactivex.schedulers.Schedulers
 
 internal val CRP_BEACON_UUID = Uuid16.fromString("7777")
 
@@ -43,8 +44,7 @@ class CrpService : Service() {
     ) { _, device, msg ->
         msg.mac = device.address
         dLog("received msg: $msg")
-        BackendDelivery.deliver(msg)
-        BackendDelivery.deliver(msg).subscribe(
+        BackendDelivery.deliver(msg).subscribeOn(Schedulers.io()).subscribe(
                 { res ->
                     dLog("delivered $msg! with res=$res")
                     advertiser.data = responseAdData(res, msg)

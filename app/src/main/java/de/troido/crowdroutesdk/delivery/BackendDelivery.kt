@@ -38,8 +38,9 @@ internal object BackendDelivery {
     fun deliver(msg: CrpMessage): Single<BackendResponse> {
         if (msg in waiting) {
             dLog("$msg already waiting")
-            waiting -= msg
+            return Single.error(Exception("Already waiting!"))
         }
+        waiting += msg
 
         delivered[msg.hashCode()]?.let {
             if (System.currentTimeMillis() < it + DELIVERY_VALIDITY) {
@@ -62,8 +63,9 @@ internal object BackendDelivery {
                     http.newCall(req).enqueueSingle()
                 }
                 .map {
-                    dLog("response!")
-                    delivered.put(msg.backendId.toUShort(), System.currentTimeMillis())
+                    dLog("response: $it")
+                    waiting -= msg
+                    delivered[msg.backendId.toUShort()] = System.currentTimeMillis()
                     (it.body() ?: it.cacheResponse()?.body())
                             ?.string()
                             ?.let(resAdapter::fromJson)

@@ -9,5 +9,5 @@ internal interface NSLookupApi {
      * @param[id] unsigned short.
      */
     @GET("/{id}")
-    fun lookup(@Path("id") id: Int): Single<NSEntry>
+    fun lookup(@Path("id") id: Int): Single<String>
 }

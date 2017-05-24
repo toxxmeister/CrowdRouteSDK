@@ -3,6 +3,8 @@ package de.troido.crowdroutesdk.service
 import de.troido.bleacon.data.BleDeserializer
 import de.troido.crowdroutesdk.util.dLog
 import de.troido.crowdroutesdk.util.toHex
+import de.troido.crowdroutesdk.util.toUByte
+import de.troido.crowdroutesdk.util.toUShort
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.*
@@ -21,6 +23,8 @@ class CrpMessage(
         override val length = BleDeserializer.Companion.ALL
 
         override fun deserialize(data: ByteArray): CrpMessage? {
+            dLog("deserializing: ${data.toHex()}")
+
             if (data.size < 3) {
                 dLog("|${data.toHex()}| < 3")
                 return null
@@ -65,6 +69,14 @@ class CrpMessage(
             )
         }
     }
+
+    override fun toString(): String =
+            """CrpMsg(
+            backendId=${backendId.toUShort()},
+            messageId=${messageId?.toUByte()},
+            duration=$duration,
+            data=${data.toHex()}
+            )""".trimIndent()
 
     override fun equals(other: Any?): Boolean =
             this === other || other is CrpMessage &&
