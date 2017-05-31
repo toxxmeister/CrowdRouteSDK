@@ -27,7 +27,7 @@ class CrpService : Service() {
         override val service = CrpService::class.java
     }
 
-    inner class CrpServiceBinder() : Binder() {
+    inner class CrpServiceBinder : Binder() {
         fun subscribe(listener: CrpListener): Unit {
             listeners.getOrPut(listener.id) { mutableListOf() }.add(listener)
         }
