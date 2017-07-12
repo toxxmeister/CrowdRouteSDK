@@ -7,22 +7,18 @@ import de.troido.crowdroutesdk.util.toUByte
 import de.troido.crowdroutesdk.util.toUShort
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import java.util.*
+import java.util.Arrays
 
-class CrpMessage(
-        val backendId: Short,
-        val type: Byte,
-        val duration: Int? = null,
-        val messageId: Byte? = null,
-        val data: ByteArray,
-        // TODO extend bleacon deserializers to avoid this "hack"
-        var mac: String = "00:00:00:00:00:00"
-) {
+class PartialCrpMessage(val backendId: Short,
+                        val type: Byte,
+                        val duration: Int? = null,
+                        val messageId: Byte? = null,
+                        val data: ByteArray) {
 
-    object Deserializer : BleDeserializer<CrpMessage> {
+    object Deserializer : BleDeserializer<PartialCrpMessage> {
         override val length = BleDeserializer.Companion.ALL
 
-        override fun deserialize(data: ByteArray): CrpMessage? {
+        override fun deserialize(data: ByteArray): PartialCrpMessage? {
             dLog("deserializing: ${data.toHex()}")
 
             if (data.size < 3) {
@@ -60,7 +56,7 @@ class CrpMessage(
 
             val payload = data.copyOfRange(offset, data.size)
 
-            return CrpMessage(
+            return PartialCrpMessage(
                     backendId,
                     (flagsType and ((1 shl 6) - 1)).toByte(),
                     duration,
@@ -69,6 +65,18 @@ class CrpMessage(
             )
         }
     }
+}
+
+class CrpMessage(val backendId: Short,
+                 val type: Byte,
+                 val duration: Int? = null,
+                 val messageId: Byte? = null,
+                 val data: ByteArray,
+                 val mac: String) {
+
+    constructor(partial: PartialCrpMessage, mac: String) :
+            this(partial.backendId, partial.type, partial.duration, partial.messageId,
+                 partial.data, mac)
 
     override fun toString(): String =
             """CrpMsg(
