@@ -7,10 +7,11 @@ import de.troido.crowdroutesdk.util.toUByte
 internal object CrpMessageAdapter {
     @ToJson fun toJson(msg: CrpMessage): CrpMessageJson =
             CrpMessageJson(
-                    msg.type.toUByte(),
+                    msg.mac,
+                    msg.data.toBase64(),
                     msg.duration,
                     msg.messageId?.toUByte(),
-                    msg.mac,
-                    msg.data.toBase64()
+                    msg.coarseLocation?.toString(),
+                    msg.fineLocation?.toString()
             )
 }

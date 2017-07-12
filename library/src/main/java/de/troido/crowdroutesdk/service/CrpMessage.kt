@@ -1,6 +1,7 @@
 package de.troido.crowdroutesdk.service
 
 import de.troido.bleacon.data.BleDeserializer
+import de.troido.crowdroutesdk.location.LatLongLocation
 import de.troido.crowdroutesdk.util.dLog
 import de.troido.crowdroutesdk.util.toHex
 import de.troido.crowdroutesdk.util.toUByte
@@ -10,10 +11,11 @@ import java.nio.ByteOrder
 import java.util.Arrays
 
 class PartialCrpMessage(val backendId: Short,
-                        val type: Byte,
+                        val data: ByteArray,
+                        val coarseLocationFlag: Boolean = false,
+                        val fineLocationFlag: Boolean = false,
                         val duration: Int? = null,
-                        val messageId: Byte? = null,
-                        val data: ByteArray) {
+                        val messageId: Byte? = null) {
 
     object Deserializer : BleDeserializer<PartialCrpMessage> {
         override val length = BleDeserializer.Companion.ALL
@@ -27,10 +29,10 @@ class PartialCrpMessage(val backendId: Short,
             }
 
             val backendId = ByteBuffer.wrap(data, 0, 2).order(ByteOrder.LITTLE_ENDIAN).short
-            val flagsType = data[2].toInt()
+            val flags = data[2].toInt()
 
-            val durationFlag = flagsType and (1 shl 7) != 0
-            val messageIdFlag = flagsType and (1 shl 6) != 0
+            val durationFlag = flags and (1 shl 7) != 0
+            val messageIdFlag = flags and (1 shl 6) != 0
 
             if (data.size < 3 + (if (durationFlag) 3 else 0) + (if (messageIdFlag) 1 else 0)) {
                 dLog("${data.toHex()} - not enough space for duration($durationFlag) and" +
@@ -58,25 +60,27 @@ class PartialCrpMessage(val backendId: Short,
 
             return PartialCrpMessage(
                     backendId,
-                    (flagsType and ((1 shl 6) - 1)).toByte(),
+                    payload,
+                    flags and (1 shl 4) != 0,
+                    flags and (1 shl 5) != 0,
                     duration,
-                    messageId,
-                    payload
+                    messageId
             )
         }
     }
 }
 
 class CrpMessage(val backendId: Short,
-                 val type: Byte,
+                 val data: ByteArray,
+                 val mac: String,
                  val duration: Int? = null,
                  val messageId: Byte? = null,
-                 val data: ByteArray,
-                 val mac: String) {
+                 val coarseLocation: LatLongLocation? = null,
+                 val fineLocation: LatLongLocation? = null) {
 
     constructor(partial: PartialCrpMessage, mac: String) :
-            this(partial.backendId, partial.type, partial.duration, partial.messageId,
-                 partial.data, mac)
+            this(partial.backendId, partial.data, mac, partial.duration, partial.messageId,
+                 null, null)
 
     override fun toString(): String =
             """CrpMsg(
