@@ -26,7 +26,6 @@ internal object BackendDelivery {
 
     /**
      * Set of messages waiting to be delivered.
-     * Messages are stored here after their initial delivery fails.
      */
     private val waiting = mutableSetOf<CrpMessage>()
 

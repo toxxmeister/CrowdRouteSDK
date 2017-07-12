@@ -39,9 +39,9 @@ class CrpService : Service() {
 
     private val scanner = BeaconScanner(
             CrpMessage.Deserializer,
-            BleFilter { uuid16 = CRP_BEACON_UUID },
+            BleFilter(uuid16 = CRP_BEACON_UUID),
             handler = handler
-    ) { _, device, msg ->
+    ) { _, (device), msg ->
         msg.mac = device.address
         dLog("received msg: $msg")
         BackendDelivery.deliver(msg).subscribeOn(Schedulers.io()).subscribe(
