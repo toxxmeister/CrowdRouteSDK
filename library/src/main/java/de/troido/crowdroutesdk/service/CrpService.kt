@@ -16,6 +16,7 @@ import de.troido.crowdroutesdk.location.LatLongLocation
 import de.troido.crowdroutesdk.location.getLocation
 import de.troido.crowdroutesdk.location.locationManager
 import de.troido.crowdroutesdk.util.dLog
+import io.reactivex.rxkotlin.toSingle
 import io.reactivex.schedulers.Schedulers
 
 internal val CRP_BEACON_UUID = Uuid16.fromString("7777")
@@ -46,24 +47,33 @@ class CrpService : Service() {
             BleFilter(uuid16 = CRP_BEACON_UUID),
             handler = handler
     ) { _, (device), partial ->
-        locationManager
-                .getLocation(LocationManager.GPS_PROVIDER)
-                .map { loc -> LatLongLocation(loc.latitude, loc.longitude) }
-                .map { loc -> CrpMessage(partial, device.address, null, loc) }
-                .subscribe { msg ->
-                    dLog("received msg: $msg")
-                    BackendDelivery.deliver(msg).subscribeOn(Schedulers.io()).subscribe(
-                            { res ->
-                                dLog("delivered $msg! with res=$res")
-                                advertiser.data = responseAdData(res, msg)
-                                advertiser.start(ADV_TIME)
-                            },
-                            {
-                                dLog("delivery failure!")
-                                it.printStackTrace()
-                            }
-                    )
-                }
+        when {
+            partial.coarseLocationFlag ->
+                locationManager.getLocation(LocationManager.NETWORK_PROVIDER)
+                        .map(::LatLongLocation)
+                        .map { loc -> CrpMessage(partial, device.address, coarseLocation = loc) }
+
+            partial.fineLocationFlag   ->
+                locationManager.getLocation(LocationManager.GPS_PROVIDER)
+                        .map(::LatLongLocation)
+                        .map { loc -> CrpMessage(partial, device.address, fineLocation = loc) }
+
+            else                       -> CrpMessage(partial, device.address).toSingle()
+
+        }.subscribe { msg ->
+            dLog("received msg: $msg")
+            BackendDelivery.deliver(msg).subscribeOn(Schedulers.io()).subscribe(
+                    { res ->
+                        dLog("delivered $msg! with res=$res")
+                        advertiser.data = responseAdData(res, msg)
+                        advertiser.start(ADV_TIME)
+                    },
+                    {
+                        dLog("delivery failure!")
+                        it.printStackTrace()
+                    }
+            )
+        }
     }
 
     private val advertiser = DynamicBleAdvertiser(handler = handler)

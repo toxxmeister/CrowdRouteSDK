@@ -78,8 +78,9 @@ class CrpMessage(val backendId: Short,
                  val coarseLocation: LatLongLocation? = null,
                  val fineLocation: LatLongLocation? = null) {
 
-    constructor(partial: PartialCrpMessage, mac: String, coarseLocation: LatLongLocation?,
-                fineLocation: LatLongLocation?) :
+    constructor(partial: PartialCrpMessage, mac: String,
+                coarseLocation: LatLongLocation? = null,
+                fineLocation: LatLongLocation? = null) :
             this(partial.backendId, partial.data, mac, partial.duration, partial.messageId,
                  coarseLocation, fineLocation)
 
