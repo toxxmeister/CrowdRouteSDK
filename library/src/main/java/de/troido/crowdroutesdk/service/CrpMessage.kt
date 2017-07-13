@@ -79,7 +79,6 @@ class CrpMessage(val backendId: Short,
                  val fineLocation: LatLongLocation? = null) {
 
     constructor(partial: PartialCrpMessage, mac: String) :
-            // TODO obtain location data
             this(partial.backendId, partial.data, mac, partial.duration, partial.messageId,
                  null, null)
 
