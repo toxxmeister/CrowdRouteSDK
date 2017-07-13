@@ -8,6 +8,7 @@ import de.troido.crowdroutesdk.util.dLog
 import de.troido.crowdroutesdk.util.enqueueSingle
 import de.troido.crowdroutesdk.util.toUShort
 import io.reactivex.Single
+import io.reactivex.rxkotlin.toSingle
 import okhttp3.MediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -61,13 +62,15 @@ internal object BackendDelivery {
                             .build()
                     http.newCall(req).enqueueSingle()
                 }
-                .map {
+                .flatMap {
                     dLog("response: $it")
                     waiting -= msg
                     delivered[msg.backendId.toUShort()] = System.currentTimeMillis()
                     (it.body() ?: it.cacheResponse()?.body())
                             ?.string()
                             ?.let(resAdapter::fromJson)
+                            ?.toSingle()
+                            ?: Single.error(Exception(/** TODO meaningful error. */))
                 }
     }
 }

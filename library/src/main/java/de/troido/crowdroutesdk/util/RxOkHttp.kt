@@ -9,6 +9,6 @@ import java.io.IOException
 internal fun Call.enqueueSingle(): Single<Response> = Single.create { sub ->
     this.enqueue(object : Callback {
         override fun onFailure(call: Call, e: IOException) = sub.onError(e)
-        override fun onResponse(call: Call?, response: Response?) = sub.onSuccess(response)
+        override fun onResponse(call: Call, response: Response) = sub.onSuccess(response)
     })
 }

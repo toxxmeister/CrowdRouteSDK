@@ -78,9 +78,10 @@ class CrpMessage(val backendId: Short,
                  val coarseLocation: LatLongLocation? = null,
                  val fineLocation: LatLongLocation? = null) {
 
-    constructor(partial: PartialCrpMessage, mac: String) :
+    constructor(partial: PartialCrpMessage, mac: String, coarseLocation: LatLongLocation?,
+                fineLocation: LatLongLocation?) :
             this(partial.backendId, partial.data, mac, partial.duration, partial.messageId,
-                 null, null)
+                 coarseLocation, fineLocation)
 
     override fun toString(): String =
             """CrpMsg(
