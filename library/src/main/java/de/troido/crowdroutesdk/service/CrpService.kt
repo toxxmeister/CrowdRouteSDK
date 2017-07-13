@@ -16,8 +16,10 @@ import de.troido.crowdroutesdk.location.LatLongLocation
 import de.troido.crowdroutesdk.location.getLocation
 import de.troido.crowdroutesdk.location.locationManager
 import de.troido.crowdroutesdk.util.dLog
-import io.reactivex.rxkotlin.toSingle
-import io.reactivex.schedulers.Schedulers
+import io.reactivex.Maybe
+import kotlinx.coroutines.experimental.CommonPool
+import kotlinx.coroutines.experimental.launch
+import kotlinx.coroutines.experimental.rx2.await
 
 internal val CRP_BEACON_UUID = Uuid16.fromString("7777")
 
@@ -42,37 +44,44 @@ class CrpService : Service() {
         }
     }
 
+    private fun coarseLocation(partial: PartialCrpMessage): Maybe<LatLongLocation> =
+            if (partial.coarseLocationFlag)
+                locationManager
+                        .getLocation(LocationManager.NETWORK_PROVIDER)
+                        .map(::LatLongLocation)
+                        .toMaybe()
+            else Maybe.empty()
+
+    private fun fineLocation(partial: PartialCrpMessage): Maybe<LatLongLocation> =
+            if (partial.coarseLocationFlag)
+                locationManager
+                        .getLocation(LocationManager.GPS_PROVIDER)
+                        .map(::LatLongLocation)
+                        .toMaybe()
+            else Maybe.empty()
+
     private val scanner = BeaconScanner(
             PartialCrpMessage.Deserializer,
             BleFilter(uuid16 = CRP_BEACON_UUID),
             handler = handler
     ) { _, (device), partial ->
-        when {
-            partial.coarseLocationFlag ->
-                locationManager.getLocation(LocationManager.NETWORK_PROVIDER)
-                        .map(::LatLongLocation)
-                        .map { loc -> CrpMessage(partial, device.address, coarseLocation = loc) }
+        launch(CommonPool) {
+            val coarse = coarseLocation(partial).await()
+            val fine = fineLocation(partial).await()
+            val msg = CrpMessage(partial, device.address, coarse, fine)
 
-            partial.fineLocationFlag   ->
-                locationManager.getLocation(LocationManager.GPS_PROVIDER)
-                        .map(::LatLongLocation)
-                        .map { loc -> CrpMessage(partial, device.address, fineLocation = loc) }
-
-            else                       -> CrpMessage(partial, device.address).toSingle()
-
-        }.subscribe { msg ->
             dLog("received msg: $msg")
-            BackendDelivery.deliver(msg).subscribeOn(Schedulers.io()).subscribe(
-                    { res ->
-                        dLog("delivered $msg! with res=$res")
-                        advertiser.data = responseAdData(res, msg)
-                        advertiser.start(ADV_TIME)
-                    },
-                    {
-                        dLog("delivery failure!")
-                        it.printStackTrace()
-                    }
-            )
+
+            try {
+                val res = BackendDelivery.deliver(msg).await()
+                advertiser.data = responseAdData(res, msg)
+                advertiser.start(ADV_TIME)
+
+                dLog("delivered $msg! with res=$res")
+            } catch (t: Throwable) {
+                dLog("delivery failure")
+                t.printStackTrace()
+            }
         }
     }
 
