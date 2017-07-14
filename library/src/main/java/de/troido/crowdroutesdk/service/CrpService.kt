@@ -53,7 +53,7 @@ class CrpService : Service() {
             else Maybe.empty()
 
     private fun fineLocation(partial: PartialCrpMessage): Maybe<LatLongLocation> =
-            if (partial.coarseLocationFlag)
+            if (partial.fineLocationFlag)
                 locationManager
                         .getLocation(LocationManager.GPS_PROVIDER)
                         .map(::LatLongLocation)
