@@ -68,7 +68,8 @@ internal object BackendDelivery {
 
         waiting -= msg
         delivered[msg.backendId.toUShort()] = System.currentTimeMillis()
-        (res.body() ?: res.cacheResponse()?.body())
+
+        return@async (res.body() ?: res.cacheResponse()?.body())
                 ?.string()
                 ?.let(resAdapter::fromJson)
                 ?: throw Exception("Response failed!")
