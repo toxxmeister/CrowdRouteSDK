@@ -7,8 +7,10 @@ import de.troido.crowdroutesdk.service.CrpMessage
 import de.troido.crowdroutesdk.util.dLog
 import de.troido.crowdroutesdk.util.enqueueSingle
 import de.troido.crowdroutesdk.util.toUShort
-import io.reactivex.Single
-import io.reactivex.rxkotlin.toSingle
+import kotlinx.coroutines.experimental.CommonPool
+import kotlinx.coroutines.experimental.Deferred
+import kotlinx.coroutines.experimental.async
+import kotlinx.coroutines.experimental.rx2.await
 import okhttp3.MediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -31,46 +33,44 @@ internal object BackendDelivery {
     private val waiting = mutableSetOf<CrpMessage>()
 
     /**
-     * Map from [CrpMessage] hashes to message delivery times.
+     * Map from [CrpMessage] hashes to message deliver times.
      */
     private val delivered = mutableMapOf<Int, Long>()
 
-    fun deliver(msg: CrpMessage): Single<BackendResponse> {
+    private fun backendRequest(msg: CrpMessage, url: String): Request =
+            Request.Builder()
+                    .url(url)
+                    .post(RequestBody.create(JSON, BackendDelivery.msgAdapter.toJson(msg)))
+                    .build()
+
+    fun deliver(msg: CrpMessage): Deferred<BackendResponse> = async(CommonPool) {
         if (msg in waiting) {
             dLog("$msg already waiting")
-            return Single.error(Exception("Already waiting!"))
+            throw Exception("Already waiting")
         }
         waiting += msg
 
         delivered[msg.hashCode()]?.let {
             if (System.currentTimeMillis() < it + DELIVERY_VALIDITY) {
-                dLog("$msg delivered, but delivery not valid anymore")
+                dLog("$msg delivered, but deliver not valid anymore")
                 delivered -= msg.hashCode()
             } else {
                 dLog("$msg already delivered")
-                return Single.error(Exception("Already delivered!"))
+                throw Exception("Already delivered!")
             }
         }
 
-        return NSLookupTable
-                .lookup(msg.backendId)
-                .flatMap { backend ->
-                    dLog("backend = $backend")
-                    val req = Request.Builder()
-                            .url(backend.url)
-                            .post(RequestBody.create(JSON, msgAdapter.toJson(msg)))
-                            .build()
-                    http.newCall(req).enqueueSingle()
-                }
-                .flatMap {
-                    dLog("response: $it")
-                    waiting -= msg
-                    delivered[msg.backendId.toUShort()] = System.currentTimeMillis()
-                    (it.body() ?: it.cacheResponse()?.body())
-                            ?.string()
-                            ?.let(resAdapter::fromJson)
-                            ?.toSingle()
-                            ?: Single.error(Exception(/** TODO meaningful error. */))
-                }
+        val backend = NSLookupTable.lookup(msg.backendId).await()
+        dLog("backend = $backend")
+
+        val res = http.newCall(backendRequest(msg, backend.url)).enqueueSingle().await()
+        dLog("response: $res")
+
+        waiting -= msg
+        delivered[msg.backendId.toUShort()] = System.currentTimeMillis()
+        (res.body() ?: res.cacheResponse()?.body())
+                ?.string()
+                ?.let(resAdapter::fromJson)
+                ?: throw Exception("Response failed!")
     }
 }

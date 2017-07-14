@@ -79,7 +79,7 @@ class CrpService : Service() {
 
                 dLog("delivered $msg! with res=$res")
             } catch (t: Throwable) {
-                dLog("delivery failure")
+                dLog("deliver failure")
                 t.printStackTrace()
             }
         }
